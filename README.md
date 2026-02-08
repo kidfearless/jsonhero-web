@@ -1,3 +1,5 @@
+### Note: Seems the original author hasn't done much with the project in the last year. So i'll just be adding some personal additions for myself here.
+
 <div align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://imagedelivery.net/3TbraffuDZ4aEf8KWOmI_w/4a157bda-2a99-4ac3-6bc7-be08b4a46600/public">
