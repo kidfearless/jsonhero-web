@@ -5,9 +5,11 @@ import {
 } from "@jsonhero/json-infer-types/lib/formats";
 import Color from "color";
 import { CodeViewer } from "~/components/CodeViewer";
+import { isHtmlDocument } from "~/utilities/isHtmlDocument";
 import { PreviewBox } from "../PreviewBox";
 import { PreviewAudioUri } from "./PreviewAudioUri";
 import { PreviewDate } from "./PreviewDate";
+import { PreviewHtmlDocument } from "./PreviewHtmlDocument";
 import { PreviewImageUri } from "./PreviewImageUri";
 import { PreviewIPFSImage } from "./PreviewIPFSImage";
 import { PreviewUri } from "./PreviewUri";
@@ -15,6 +17,9 @@ import { PreviewVideoUri } from "./PreviewVideoUri";
 
 export function PreviewString({ info }: { info: JSONStringType }) {
   if (info.format == null) {
+    if (isHtmlDocument(info.value)) {
+      return <PreviewHtmlDocument value={info.value} />;
+    }
     return <></>;
   }
 

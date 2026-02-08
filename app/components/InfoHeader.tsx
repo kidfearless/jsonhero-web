@@ -8,6 +8,7 @@ import {
 } from "~/hooks/useJsonColumnView";
 import { concatenated, getHierarchicalTypes } from "~/utilities/dataType";
 import { formatRawValue } from "~/utilities/formatter";
+import { isHtmlDocument } from "~/utilities/isHtmlDocument";
 import { isNullable } from "~/utilities/nullable";
 import { CopyTextButton } from "./CopyTextButton";
 import { Body } from "./Primitives/Body";
@@ -41,6 +42,11 @@ export function InfoHeader({ relatedPaths }: InfoHeaderProps) {
   const isSelectedLeafNode =
     selectedInfo.name !== "object" && selectedInfo.name !== "array";
 
+  const isHtmlString =
+    selectedInfo.name === "string" &&
+    selectedInfo.format == null &&
+    isHtmlDocument(String(selectedJson));
+
   const canBeNull = useMemo(() => {
     return isNullable(relatedPaths, json);
   }, [relatedPaths, json]);
@@ -73,7 +79,7 @@ export function InfoHeader({ relatedPaths }: InfoHeaderProps) {
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
-        {isSelectedLeafNode && (
+        {isSelectedLeafNode && !isHtmlString && (
           <LargeMono
             className={`z-10 py-1 mb-1 text-slate-800 overflow-ellipsis break-words transition rounded-sm dark:text-slate-300 ${
               hovering ? "bg-slate-100 dark:bg-slate-700" : "bg-transparent"
