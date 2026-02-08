@@ -8,7 +8,7 @@ type JsonDocType = {
   minimal?: boolean;
 };
 
-const JsonDocContext = createContext<JsonDocType | undefined>(undefined);
+export const JsonDocContext = createContext<JsonDocType | undefined>(undefined);
 
 export function JsonDocProvider({
   children,

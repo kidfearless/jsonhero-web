@@ -1,4 +1,4 @@
-import { ShareIcon, PlusIcon, TrashIcon } from "@heroicons/react/outline";
+import { ShareIcon, PlusIcon, TrashIcon, CollectionIcon } from "@heroicons/react/outline";
 import { DocumentTitle } from "./DocumentTitle";
 import { DiscordIconTransparent } from "./Icons/DiscordIconTransparent";
 import { EmailIconTransparent } from "./Icons/EmailIconTransparent";
@@ -12,12 +12,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "./UI/Popover";
-import { Form } from "remix";
-import { useJsonDoc } from "~/hooks/useJsonDoc";
+import { Form, Link } from "remix";
+import { useOptionalJsonDoc } from "~/hooks/useOptionalJsonDoc";
 import { LogoTriggerdotdev } from "./Icons/LogoTriggerdotdev";
 
 export function Header() {
-  const { doc } = useJsonDoc();
+  const { doc } = useOptionalJsonDoc();
 
   return (
     <header className="flex items-center justify-between w-screen h-[40px] bg-indigo-700 dark:bg-slate-800 border-b-[1px] border-slate-600">
@@ -30,7 +30,16 @@ export function Header() {
       </div>
       <DocumentTitle />
       <ol className="flex text-sm items-center gap-2 px-4">
-        {!doc.readOnly && (
+        <Link
+          to="/documents"
+          title="View all documents"
+          className="flex items-center justify-center py-1 bg-slate-200 text-slate-800 bg-opacity-80 text-base font-bold px-2 rounded uppercase hover:cursor-pointer hover:bg-opacity-100 transition"
+        >
+          <CollectionIcon className="w-4 h-4 mr-0.5" />
+          Docs
+        </Link>
+
+        {doc && !doc.readOnly && (
           <Form
             method="delete"
             onSubmit={(e) =>

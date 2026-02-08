@@ -7,6 +7,12 @@ export type ToastMessage = {
   id: string;
 };
 
+export type RecentDocument = {
+  id: string;
+  title: string;
+  viewedAt: string;
+};
+
 const ONE_YEAR = 1000 * 60 * 60 * 24 * 365;
 
 export const { commitSession, getSession } = createCookieSessionStorage({
@@ -45,4 +51,37 @@ export function setErrorMessage(
     type: "error",
     id: crypto.randomUUID(),
   });
+}
+
+/**
+ * Track a recently viewed document in the session
+ */
+export function trackRecentDocument(
+  session: Session,
+  docId: string,
+  title: string
+) {
+  const recent = (session.get("recentDocuments") as RecentDocument[]) || [];
+  
+  // Remove if already exists
+  const filtered = recent.filter(d => d.id !== docId);
+  
+  // Add to front with current timestamp
+  const updated = [
+    {
+      id: docId,
+      title,
+      viewedAt: new Date().toISOString(),
+    },
+    ...filtered,
+  ].slice(0, 10); // Keep only last 10
+  
+  session.set("recentDocuments", updated);
+}
+
+/**
+ * Get recently viewed documents from session
+ */
+export function getRecentDocuments(session: Session): RecentDocument[] {
+  return (session.get("recentDocuments") as RecentDocument[]) || [];
 }

@@ -2,11 +2,15 @@ import { PencilAltIcon } from "@heroicons/react/outline";
 import { useEffect, useRef, useState } from "react";
 import { useFetcher } from "remix";
 import { match } from "ts-pattern";
-import { useJsonDoc } from "~/hooks/useJsonDoc";
+import { useOptionalJsonDoc } from "~/hooks/useOptionalJsonDoc";
 
 export function DocumentTitle() {
-  const { doc } = useJsonDoc();
-  const [editedTitle, setEditedTitle] = useState(doc.title);
+  const { doc } = useOptionalJsonDoc();
+  const [editedTitle, setEditedTitle] = useState(doc?.title ?? "");
+
+  if (!doc) {
+    return null;
+  }
   const updateDoc = useFetcher();
   const ref = useRef<HTMLInputElement | null>(null);
 

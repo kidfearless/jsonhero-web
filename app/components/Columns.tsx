@@ -9,6 +9,7 @@ import { ColumnDefinition } from "~/useColumnView";
 import { BlankColumn } from "./BlankColumn";
 import { Column } from "./Column";
 import { ColumnItem } from "./ColumnItem";
+import { DocumentsColumn } from "./DocumentsColumn";
 
 function ColumnsElement({ columns }: { columns: ColumnDefinition[] }) {
   const [json] = useJson();
@@ -28,6 +29,7 @@ function ColumnsElement({ columns }: { columns: ColumnDefinition[] }) {
 
   return (
     <div className="columns flex flex-grow overflow-x-auto focus:outline-none no-scrollbar">
+      <DocumentsColumn />
       {columns.map((column) => {
         return (
           <Column

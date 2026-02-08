@@ -9,7 +9,7 @@ import {
   useParams,
 } from "remix";
 import invariant from "tiny-invariant";
-import { deleteDocument, getDocument, JSONDocument } from "~/jsonDoc.server";
+import { deleteDocument, getDocument, JSONDocument, listDocuments, DocumentMetadata } from "~/jsonDoc.server";
 import { JsonDocProvider } from "~/hooks/useJsonDoc";
 import { useEffect } from "react";
 import { JsonProvider } from "~/hooks/useJson";
@@ -24,6 +24,7 @@ import { JsonView } from "~/components/JsonView";
 import safeFetch from "~/utilities/safeFetch";
 import { JsonTreeViewProvider } from "~/hooks/useJsonTree";
 import { JsonSearchProvider } from "~/hooks/useJsonSearch";
+import { DocumentListProvider } from "~/hooks/useDocumentList";
 import { LargeTitle } from "~/components/Primitives/LargeTitle";
 import { ExtraLargeTitle } from "~/components/Primitives/ExtraLargeTitle";
 import { Body } from "~/components/Primitives/Body";
@@ -35,6 +36,7 @@ import {
   getSession,
   setErrorMessage,
   setSuccessMessage,
+  trackRecentDocument,
 } from "~/services/toast.server";
 import { getRandomUserAgent } from '~/utilities/getRandomUserAgent'
 
@@ -51,6 +53,14 @@ export const loader: LoaderFunction = async ({ params, request }) => {
 
   const path = getPathFromRequest(request);
   const minimal = getMinimalFromRequest(request);
+
+  // Get document metadata
+  const allDocs = await listDocuments();
+  const metadata = allDocs.find(d => d.id === params.id);
+
+  // Track recent document in session
+  const session = await getSession(request.headers.get("cookie"));
+  trackRecentDocument(session, params.id, doc.title);
 
   if (doc.type == "url") {
     console.log(`Fetching ${doc.url}...`);
@@ -78,6 +88,9 @@ export const loader: LoaderFunction = async ({ params, request }) => {
       json,
       path,
       minimal,
+      metadata,
+      allDocs,
+      headers: { "Set-Cookie": await commitSession(session) },
     };
   } else {
     return {
@@ -85,6 +98,9 @@ export const loader: LoaderFunction = async ({ params, request }) => {
       json: JSON.parse(doc.contents),
       path,
       minimal,
+      metadata,
+      allDocs,
+      headers: { "Set-Cookie": await commitSession(session) },
     };
   }
 };
@@ -155,6 +171,8 @@ type LoaderData = {
   json: unknown;
   path?: string;
   minimal?: boolean;
+  metadata?: DocumentMetadata;
+  allDocs: DocumentMetadata[];
 };
 
 export const meta: MetaFunction = ({
@@ -194,6 +212,7 @@ export default function JsonDocumentRoute() {
       key={loaderData.doc.id}
       minimal={loaderData.minimal}
     >
+      <DocumentListProvider documents={loaderData.allDocs ?? []}>
       <JsonProvider initialJson={loaderData.json}>
         <JsonSchemaProvider>
           <JsonColumnViewProvider>
@@ -243,6 +262,7 @@ export default function JsonDocumentRoute() {
           </JsonColumnViewProvider>
         </JsonSchemaProvider>
       </JsonProvider>
+      </DocumentListProvider>
     </JsonDocProvider>
   );
 }

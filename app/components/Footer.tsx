@@ -1,4 +1,4 @@
-import { useJsonDoc } from "~/hooks/useJsonDoc";
+import { useOptionalJsonDoc } from "~/hooks/useOptionalJsonDoc";
 import { ArrowKeysIcon } from "./Icons/ArrowKeysIcon";
 import { CopyShortcutIcon } from "./Icons/CopyShortcutIcon";
 import { EscapeKeyIcon } from "./Icons/EscapeKeyIcon";
@@ -13,7 +13,7 @@ import TriggerDevLogoImage from "~/assets/images/trigger-dev-logo.png";
 import TriggerDevLogoTriangleImage from "~/assets/images/td-triangle.png";
 
 export function Footer() {
-  const { minimal } = useJsonDoc();
+  const { minimal } = useOptionalJsonDoc();
 
   return (
     <footer className="flex items-center justify-between w-screen h-[32px] flex-shrink-0 bg-slate-200 dark:bg-slate-800 border-t-[1px] border-slate-400 transition dark:border-slate-600">

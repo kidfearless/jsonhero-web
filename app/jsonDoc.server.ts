@@ -28,6 +28,26 @@ export type CreateJsonOptions = {
 
 export type JSONDocument = RawJsonDocument | UrlJsonDocument;
 
+// Document collection and tracking types
+export type DocumentMetadata = {
+  id: string;
+  title: string;
+  type: "raw" | "url";
+  createdAt: string;
+  updatedAt: string;
+  readOnly: boolean;
+  level: number; // Level in hierarchy (root = 0, first uploaded = 1, etc.)
+};
+
+export type DocumentCollection = {
+  version: number;
+  documents: DocumentMetadata[];
+  lastUpdated: string;
+};
+
+// Constant for the collection index key
+const COLLECTION_INDEX_KEY = "__DOCUMENTS_COLLECTION__";
+
 export async function createFromUrlOrRawJson(
   urlOrJson: string,
   title?: string
@@ -77,6 +97,9 @@ export async function createFromUrl(
     metadata: options?.metadata ?? undefined,
   });
 
+  // Add to collection index
+  await addToCollection(docId, doc.title, "url", doc.readOnly);
+
   return doc;
 }
 
@@ -99,6 +122,9 @@ export async function createFromRawJson(
     expirationTtl: options?.ttl ?? undefined,
     metadata: options?.metadata ?? undefined,
   });
+
+  // Add to collection index
+  await addToCollection(docId, doc.title, "raw", doc.readOnly);
 
   return doc;
 }
@@ -125,11 +151,103 @@ export async function updateDocument(
 
   await DOCUMENTS.put(slug, JSON.stringify(updated));
 
+  // Update in collection index
+  await updateDocumentInCollection(slug, { title });
+
   return updated;
 }
 
 export async function deleteDocument(slug: string): Promise<void> {
   await DOCUMENTS.delete(slug);
+  
+  // Remove from collection index
+  const collection = await getDocumentCollection();
+  const updated = {
+    ...collection,
+    documents: collection.documents.filter(doc => doc.id !== slug),
+    lastUpdated: new Date().toISOString(),
+  };
+  await DOCUMENTS.put(COLLECTION_INDEX_KEY, JSON.stringify(updated));
+}
+
+/**
+ * Get the collection index of all documents
+ */
+export async function getDocumentCollection(): Promise<DocumentCollection> {
+  const data = await DOCUMENTS.get(COLLECTION_INDEX_KEY);
+  
+  if (!data) {
+    return {
+      version: 1,
+      documents: [],
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+  
+  return JSON.parse(data);
+}
+
+/**
+ * List all documents with their metadata
+ */
+export async function listDocuments(): Promise<DocumentMetadata[]> {
+  const collection = await getDocumentCollection();
+  return collection.documents.sort((a, b) => {
+    // Sort by creation date, newest first
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+/**
+ * Add a document to the collection index
+ */
+async function addToCollection(
+  docId: string,
+  title: string,
+  type: "raw" | "url",
+  readOnly: boolean
+): Promise<void> {
+  const collection = await getDocumentCollection();
+  
+  // Count existing documents to determine level
+  const level = collection.documents.length + 1;
+  
+  const metadata: DocumentMetadata = {
+    id: docId,
+    title,
+    type,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    readOnly,
+    level,
+  };
+  
+  collection.documents.push(metadata);
+  collection.lastUpdated = new Date().toISOString();
+  
+  await DOCUMENTS.put(COLLECTION_INDEX_KEY, JSON.stringify(collection));
+}
+
+/**
+ * Update a document's metadata in the collection
+ */
+export async function updateDocumentInCollection(
+  slug: string,
+  updates: Partial<DocumentMetadata>
+): Promise<void> {
+  const collection = await getDocumentCollection();
+  const docIndex = collection.documents.findIndex(d => d.id === slug);
+  
+  if (docIndex === -1) return;
+  
+  collection.documents[docIndex] = {
+    ...collection.documents[docIndex],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  
+  collection.lastUpdated = new Date().toISOString();
+  await DOCUMENTS.put(COLLECTION_INDEX_KEY, JSON.stringify(collection));
 }
 
 function createId(): string {

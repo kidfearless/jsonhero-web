@@ -1,4 +1,4 @@
-import { ActionFunction, redirect } from "remix";
+import { ActionFunction, json, redirect } from "remix";
 import invariant from "tiny-invariant";
 import { sendEvent } from "~/graphJSON.server";
 import { createFromRawJson } from "~/jsonDoc.server";
@@ -19,24 +19,35 @@ export const action: ActionFunction = async ({ request, context }) => {
   if (!rawJson) errors.rawJson = true;
 
   if (Object.keys(errors).length) {
-    return errors;
+    return json(errors, { status: 400 });
   }
 
   invariant(typeof filename === "string", "filename must be a string");
   invariant(typeof rawJson === "string", "rawJson must be a string");
 
-  const doc = await createFromRawJson(filename, rawJson);
+  try {
+    const doc = await createFromRawJson(filename, rawJson);
 
-  const url = new URL(request.url);
+    const url = new URL(request.url);
 
-  context.waitUntil(
-    sendEvent({
-      type: "create",
-      from: "file",
-      id: doc.id,
-      source: url.searchParams.get("utm_source") ?? url.hostname,
-    })
-  );
+    context.waitUntil(
+      sendEvent({
+        type: "create",
+        from: "file",
+        id: doc.id,
+        source: url.searchParams.get("utm_source") ?? url.hostname,
+      })
+    );
 
-  return redirect(`/j/${doc.id}`);
+    // Return JSON with document ID for multiple uploads
+    return json({ id: doc.id, success: true, title: doc.title });
+  } catch (error) {
+    return json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 400 }
+    );
+  }
 };

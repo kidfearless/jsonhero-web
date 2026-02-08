@@ -3,7 +3,7 @@ import { colorForItemAtPath } from "~/utilities/colors";
 import { IconComponent } from "~/useColumnView";
 import { useJson } from "../hooks/useJson";
 import { memo, useMemo } from "react";
-import { useJsonDoc } from "~/hooks/useJsonDoc";
+import { useOptionalJsonDoc } from "~/hooks/useOptionalJsonDoc";
 
 export type ColumnProps = {
   id: string;
@@ -16,7 +16,7 @@ export type ColumnProps = {
 function ColumnElement(column: ColumnProps) {
   const { id, title, children } = column;
   const [json] = useJson();
-  const { minimal } = useJsonDoc();
+  const { minimal } = useOptionalJsonDoc();
   const iconColor = useMemo(() => colorForItemAtPath(id, json), [id, json]);
 
   return (
