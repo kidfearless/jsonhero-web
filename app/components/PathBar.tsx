@@ -15,6 +15,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { memo, useEffect, useRef, useState } from "react";
 import { useJson } from '~/hooks/useJson';
 import { JSONHeroPath } from '@jsonhero/path';
+import { evaluateJSONPath, isJSONPathExpression } from '~/utilities/jsonpath';
 
 export function PathBar() {
   const [isEditable, setIsEditable] = useState(false);
@@ -49,7 +50,10 @@ export function PathBar() {
 
 export function PathBarText({ selectedNodes, onConfirm }: { selectedNodes: ColumnViewNode[], onConfirm: (newPath: string) => void; }) {
   const [path, setPath] = useState('');
+  const [jsonPathResults, setJsonPathResults] = useState<Array<{ path: string; value: unknown; pointer: string }>>([]);
+  const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const ref = useRef<HTMLInputElement>(null);
+  const [json] = useJson();
 
   useEffect(() => {
     setPath(selectedNodes.at(-1)?.id || '');
@@ -61,34 +65,102 @@ export function PathBarText({ selectedNodes, onConfirm }: { selectedNodes: Colum
     }
   }, [ref]);
 
-  return (
-    <form
-      onSubmit={(e) => {
-        onConfirm(path);
+  // Evaluate JSONPath expressions as the user types
+  useEffect(() => {
+    if (isJSONPathExpression(path)) {
+      const results = evaluateJSONPath(json, path);
+      setJsonPathResults(results);
+      setSelectedResultIndex(0);
+    } else {
+      setJsonPathResults([]);
+      setSelectedResultIndex(0);
+    }
+  }, [path, json]);
+
+  const handleSubmit = () => {
+    if (jsonPathResults.length > 0) {
+      // Use the selected result from JSONPath query
+      const result = jsonPathResults[selectedResultIndex];
+      onConfirm(result.pointer);
+    } else {
+      // Regular path navigation
+      onConfirm(path);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (jsonPathResults.length > 0) {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
-      }}
-      // onBlur={() => onConfirm(path)}
-      className="flex overflow-x-hidden items-center bg-slate-300 dark:bg-slate-700 rounded-sm"
-    >
-      <label className="grow">
-        <input
-          ref={ref}
-          className={
-            "w-full border-none outline-none text-ellipsis text-base px-2 py-0 rounded-sm bg-transparent dark:text-slate-200"
-          }
-          style={{ boxShadow: 'none' }}
-          type="text"
-          name="title"
-          spellCheck="false"
-          placeholder="Name your JSON file"
-          value={path}
-          onChange={(e) => setPath(e.target.value)}
-        />
-      </label>
-      <button type="submit" className="flex ml-auto justify-center items-center w-[26px] h-[26px] hover:bg-slate-400 dark:text-slate-400 dark:hover:bg-white dark:hover:bg-opacity-[10%]">
-        <CheckIcon className='h-5' />
-      </button>
-    </form>
+        setSelectedResultIndex((prev) => 
+          Math.min(prev + 1, jsonPathResults.length - 1)
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedResultIndex((prev) => Math.max(prev - 1, 0));
+      }
+    }
+  };
+
+  return (
+    <div className="relative">
+      <form
+        onSubmit={(e) => {
+          handleSubmit();
+          e.preventDefault();
+        }}
+        className="flex overflow-x-hidden items-center bg-slate-300 dark:bg-slate-700 rounded-sm"
+      >
+        <label className="grow">
+          <input
+            ref={ref}
+            className={
+              "w-full border-none outline-none text-ellipsis text-base px-2 py-0 rounded-sm bg-transparent dark:text-slate-200"
+            }
+            style={{ boxShadow: 'none' }}
+            type="text"
+            name="title"
+            spellCheck="false"
+            placeholder="Path or JSONPath query (e.g., $.users[*].name)"
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        </label>
+        <button type="submit" className="flex ml-auto justify-center items-center w-[26px] h-[26px] hover:bg-slate-400 dark:text-slate-400 dark:hover:bg-white dark:hover:bg-opacity-[10%]">
+          <CheckIcon className='h-5' />
+        </button>
+      </form>
+      
+      {jsonPathResults.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-sm shadow-lg max-h-96 overflow-y-auto z-50">
+          <div className="p-2 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+            {jsonPathResults.length} result{jsonPathResults.length !== 1 ? 's' : ''} found
+          </div>
+          {jsonPathResults.map((result, index) => (
+            <div
+              key={index}
+              className={`px-3 py-2 cursor-pointer border-b border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                index === selectedResultIndex ? 'bg-slate-100 dark:bg-slate-700' : ''
+              }`}
+              onClick={() => {
+                setSelectedResultIndex(index);
+                handleSubmit();
+              }}
+            >
+              <div className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">
+                {result.pointer}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">
+                {typeof result.value === 'object' 
+                  ? JSON.stringify(result.value).substring(0, 100) + '...'
+                  : String(result.value)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -108,11 +180,7 @@ export function PathBarLink({
   return (
     <div
       className="flex flex-shrink-0 flex-grow-0 overflow-x-hidden"
-      onClick={(event) => {
-        if (event.detail == 2) {
-          enableEdit();
-        }
-      }}
+      onClick={enableEdit}
     >
       {selectedNodes.map((node, index) => {
         return (
@@ -127,7 +195,10 @@ export function PathBarLink({
       })}
       <button
         className="flex ml-auto justify-center items-center w-[26px] h-[26px] hover:bg-slate-300 dark:text-slate-400 dark:hover:bg-white dark:hover:bg-opacity-[10%]"
-        onClick={enableEdit}>
+        onClick={(e) => {
+          e.stopPropagation();
+          enableEdit();
+        }}>
         <PencilAltIcon className='h-5' />
       </button>
     </div>
@@ -200,7 +271,10 @@ function PathBarElement({
         style={{
           flexShrink: 1,
         }}
-        onClick={() => onClick && onClick(node.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick && onClick(node.id);
+        }}
       >
         <div className="w-4 flex-shrink-[0.5] flex-grow-0 flex-col justify-items-center whitespace-nowrap overflow-x-hidden transition dark:text-slate-400">
           {node.icon && <node.icon className="h-3 w-3" />}

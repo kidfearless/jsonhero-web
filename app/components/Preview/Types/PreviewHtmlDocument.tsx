@@ -24,7 +24,7 @@ export function PreviewHtmlDocument({ value }: PreviewHtmlDocumentProps) {
         iframe.contentDocument || iframe.contentWindow?.document;
       if (doc?.body) {
         const height = doc.documentElement.scrollHeight;
-        iframe.style.height = `${Math.max(200, Math.min(height, 600))}px`;
+        iframe.style.height = `80vh`;
       }
     } catch {
       // sandbox may block access in some cases
